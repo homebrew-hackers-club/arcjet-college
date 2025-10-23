@@ -1,0 +1,120 @@
+---
+title: Arcjet Bot Protection — Concepts and Identifying Bots
+description: Learn how Arcjet detects bots, when to allow or deny them, how to use categories, handle missing User-Agent headers, and what to expect from fingerprint-based blocking.
+banner: assets/banner-bot-detection.png
+---
+
+## 🤖 Overview
+
+Arcjet helps you manage automated traffic (bots) so the right requests reach your app. You can allow good bots (e.g., search crawlers) and deny unwanted ones (e.g., scrapers), with simple, composable rules. See concepts and capabilities in the official docs [Concepts](https://docs.arcjet.com/bot-protection/concepts) and [Identifying bots](https://docs.arcjet.com/bot-protection/identifying-bots).
+
+<YouTube id="EllhRvfC9q0"/>
+
+## 🧭 Why configure bot protection?
+
+- **Good vs bad bots**: Some bots index your site or monitor uptime; others scrape content or abuse forms.
+- **robots.txt is not enough**: Not all bots respect it.
+- **Granular control**: Allow bots for APIs but deny them for sensitive flows like signup forms.
+
+Reference: [Concepts](https://docs.arcjet.com/bot-protection/concepts)
+
+## 🧠 Bot detection realities
+
+- **No solution blocks 100% of bad bots.** Sophisticated bots mimic real users.
+- **Plans with IP analysis**: Starter/Business plans add IP-based verification to catch imposters (e.g., pretending to be Google).
+- **Combine with rate limiting**: Best results come from layering bot protection with rate limits.
+- **Trade-offs exist**: Fingerprint-based blocking may temporarily affect some legitimate users behind shared IPs.
+
+References: [Concepts](https://docs.arcjet.com/bot-protection/concepts)
+
+## 🔍 Identifying and configuring bots
+
+You can explicitly allow or deny individual bots, and/or entire categories. In TypeScript, identifiers autocomplete to make configuration easy.
+
+### Allow specific known bots
+
+```ts
+// Block all bots except specific Google/Bing crawlers and curl
+detectBot({
+  mode: "LIVE", // use "DRY_RUN" to observe first
+  allow: [
+    "GOOGLE_CRAWLER",
+    "GOOGLE_CRAWLER_NEWS",
+    "BING_CRAWLER",
+    "CURL",
+  ],
+});
+```
+
+### Allow categories (plus optional individuals)
+
+Available categories include: `CATEGORY:SEARCH_ENGINE`, `CATEGORY:PROGRAMMATIC`, `CATEGORY:PREVIEW`, `CATEGORY:AI`, `CATEGORY:MONITOR`, `CATEGORY:FEEDFETCHER`, `CATEGORY:GOOGLE`, `CATEGORY:MICROSOFT`, `CATEGORY:META`, `CATEGORY:TOOL`, `CATEGORY:VERCEL`, `CATEGORY:YAHOO`, `CATEGORY:ARCHIVE`, `CATEGORY:OPTIMIZER`, `CATEGORY:ACADEMIC`, `CATEGORY:SOCIAL`, `CATEGORY:AMAZON`, `CATEGORY:UNKNOWN`.
+
+```ts
+// Block all bots except search engines and curl
+detectBot({
+  mode: "LIVE",
+  allow: [
+    "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc
+    "CURL", // allow a specific bot alongside a category
+  ],
+});
+```
+
+Note: Only configured categories are checked for performance. Worst-case comparison is roughly `count(detectedBot) * count(configuredCategories)`.
+
+References: [Identifying bots](https://docs.arcjet.com/bot-protection/identifying-bots)
+
+## 🧾 Handling missing User-Agent headers
+
+Requests without a `User-Agent` cannot be reliably matched to a bot and are marked as errored. Most legitimate clients include it (per RFC 7231 guidance). You can choose to block requests missing a `User-Agent` with a filter rule:
+
+```ts
+filter({
+  // Deny any traffic with no user-agent header
+  deny: ['len(http.request.headers["user-agent"]) eq 0'],
+  mode: "LIVE", // use DRY_RUN to log only first
+});
+```
+
+Alternatively, check results after a decision using `@arcjet/inspect`:
+
+```ts
+import { isMissingUserAgent } from "@arcjet/inspect";
+
+if (decision.results.some(isMissingUserAgent)) {
+  // e.g., log or return a 400 Bad Request
+  // Next.js: return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  // Node.js: res.writeHead(400, { "Content-Type": "application/json" });
+  //          res.end(JSON.stringify({ error: "Bad request" }));
+}
+```
+
+Reference: [Concepts](https://docs.arcjet.com/bot-protection/concepts)
+
+## 🧪 Custom bots and filters
+
+If a bot isn’t in the known list, block it using a custom filter (e.g., by header pattern, path, or behavior). See the Malicious traffic blueprint in the docs for examples.
+
+Reference: [Identifying bots](https://docs.arcjet.com/bot-protection/identifying-bots)
+
+## 🧱 Blocking based on fingerprint
+
+When Arcjet detects bot activity, it may block further requests using a client fingerprint (including IP). This can inadvertently affect some legitimate users behind the same IP for a period, but improves overall safety against abusive traffic.
+
+Reference: [Concepts](https://docs.arcjet.com/bot-protection/concepts)
+
+## ✅ Practical recommendations
+
+- **Start in DRY_RUN** to observe impact before enforcing.
+- **Layer with rate limiting** for defense-in-depth and fewer false positives.
+- **Allow good bots** you rely on (search, monitors); deny the rest.
+- **Handle missing User-Agent** with a filter or post-decision check.
+- **Monitor and iterate**; bot ecosystems evolve, and so should rules.
+
+## 📚 References
+
+- Arcjet — Bot protection concepts: https://docs.arcjet.com/bot-protection/concepts
+- Arcjet — Identifying bots: https://docs.arcjet.com/bot-protection/identifying-bots
+
+

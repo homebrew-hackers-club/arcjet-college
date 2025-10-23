@@ -1,0 +1,88 @@
+---
+title: Getting Started with Arcjet
+description: Quick start to protect your app with Arcjet — install, configure, and verify in minutes.
+---
+
+## 🚀 Why Arcjet
+
+Arcjet helps you protect your app with bot detection, rate limiting, email validation, and more — in just a few lines of code.
+
+<YouTube id="CuemptpnIVQ"/>
+
+## ✅ Prerequisites
+
+- Node.js 20+ (or Bun/Deno depending on your stack)
+- Arcjet account and API key (`ARCJET_KEY`)
+
+## 📦 Install Arcjet
+
+Pick the SDK for your framework (see docs for more):
+
+- Node.js: `npm i @arcjet/node @arcjet/inspect`
+- Next.js: `npm i @arcjet/next @arcjet/inspect`
+- Fastify: `npm i @arcjet/fastify`
+- NestJS: `npm i @arcjet/nest`
+- Remix: `npm i @arcjet/remix @arcjet/inspect`
+
+Other environments: Bun (`@arcjet/bun`), Deno (`npm:@arcjet/deno`), Astro, SvelteKit, Hono, Nuxt, React Router — see the official guide.
+
+## 🔑 Configure environment
+
+Create a `.env.local` (or your platform’s secrets) and add:
+
+```bash
+ARCJET_KEY=ajk_your_key_here
+```
+
+## 🛡️ Minimal usage example (Node.js)
+
+```ts
+// index.ts
+import { arcjet, tokenBucket } from "@arcjet/node";
+import http from "node:http";
+
+const aj = arcjet({ key: process.env.ARCJET_KEY!, rules: [
+  tokenBucket({ mode: "LIVE", refillRate: 5, interval: "10s", capacity: 20 })
+]});
+
+const server = http.createServer(async (req, res) => {
+  const decision = await aj.protect(req);
+  if (decision.isDenied()) {
+    res.statusCode = 429;
+    res.end("Too Many Requests");
+    return;
+  }
+  res.end("Hello from Arcjet-protected server!");
+});
+
+server.listen(8000, () => console.log("Listening on http://localhost:8000"));
+```
+
+Start the server:
+
+```bash
+node --env-file .env.local index.js
+# or: npx tsx --env-file .env.local index.ts
+```
+
+## 🔍 Verify protection
+
+Visit your app in the browser and refresh a few times to hit the limit. Then test with `curl`:
+
+```bash
+curl -v http://localhost:8000
+```
+
+By default, `curl` may be treated as a bot and receive a `403`, and decisions are cached per the `interval` window.
+
+## 🧭 Next steps
+
+- Site-wide bot protection with middleware
+- Allow/deny specific bots
+- Write tests for your rules
+
+## 📚 References
+
+- Arcjet — Get started: https://docs.arcjet.com/get-started
+
+
